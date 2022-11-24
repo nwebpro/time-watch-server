@@ -32,6 +32,7 @@ async function dbConnect() {
 // Database Collection
 const Users = client.db('timeWatch').collection('users')
 const Products = client.db('timeWatch').collection('products')
+const Categories = client.db('timeWatch').collection('categories')
 
 
 // User Create Api Endpoint
@@ -89,6 +90,93 @@ app.get('/api/v1/time-watch/products', async (req, res) => {
         })
     }
 })
+
+
+// Add Category Api
+app.post('/api/v1/time-watch/category', async (req, res) => {
+    try {
+        const categoryData = req.body
+        const categories = await Categories.insertOne(categoryData)
+        res.send({
+            success: true,
+            message: 'Successfully add a new category',
+            data: categories
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+// All Product Category get api 
+app.get('/api/v1/time-watch/category', async (req, res) => {
+    try {
+        const categories = await Categories.find({}).toArray()
+        res.send({
+            success: true,
+            message: 'Successfully all category loaded!',
+            data: categories
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
+// Category Delete
+app.delete('/api/v1/time-watch/category/:categoryId', async (req, res) => {
+    try {
+        const categoryId = req.params.categoryId
+        const categories = await Categories.deleteOne({ _id: ObjectId(categoryId) })
+        res.send({
+            success: true,
+            message: 'Category deleted successfully',
+            data: categories
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
+// app.get('/api/v1/time-watch/category/:categoryId', async (req, res) => {
+//     try {
+//         const categoryId = req.params.categoryId
+//         const categories = await Products.find({ categoryName: categoryId })
+//         res.send({
+//             success: true,
+//             message: 'Category loaded successfully',
+//             data: categories
+//         })
+//     } catch (error) {
+//         res.send({
+//             success: false,
+//             error: error.message
+//         })
+//     }
+// })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // Root api import and endpoint
