@@ -31,6 +31,7 @@ async function dbConnect() {
 
 // Database Collection
 const Users = client.db('timeWatch').collection('users')
+const Products = client.db('timeWatch').collection('products')
 
 
 // User Create Api Endpoint
@@ -54,6 +55,23 @@ app.post('/api/v1/time-watch/users', async (req, res) => {
     }
 })
 
+// Add Product Api Endpoint
+app.post('/api/v1/time-watch/add-product', async (req, res) => {
+    try {
+        const addProduct = req.body
+        const addProducts = await Products.insertOne(addProduct)
+        res.send({
+            success: true,
+            message: 'Successfully create a new product',
+            data: addProducts
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
 
 
 // Root api import and endpoint
