@@ -2,6 +2,7 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 require('dotenv').config()
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion } = require('mongodb')
 
 // Server running port
@@ -17,6 +18,24 @@ app.use(cors())
 
 const uri = `mongodb+srv://${ process.env.BD_USER }:${ process.env.DB_PASS }@cluster0.1ipuukw.mongodb.net/?retryWrites=true&w=majority`
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 })
+
+// Verify JWT Token
+function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization
+    if(!authHeader) {
+        return res.status(401).send('Unauthorized Access!')
+    }
+    const token = authHeader.split(' ')[1]
+    jwt.verify(token, process.env.JWT_ACCESS_TOKEN, function(err, decoded){
+        if(err) {
+            return res.status(403).send({
+                message: 'Forbidden Access!'
+            })
+        }
+        req.decoded = decoded
+        next()
+    })
+}
 
 
 // Database Connect function
@@ -34,6 +53,16 @@ const Users = client.db('timeWatch').collection('users')
 const Products = client.db('timeWatch').collection('products')
 const Categories = client.db('timeWatch').collection('categories')
 
+// JWT Token Get
+app.get('/api/v1/time-watch/jwt', async (req, res) => {
+    const email = req.query.email
+    const user = await Users.findOne({ email: email })
+    if(user) {
+        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '7d' })
+        return res.send({ accessToken: token })
+    }
+    res.status(403).send({ accessToken: '' })
+})
 
 // User Create Api Endpoint
 app.post('/api/v1/time-watch/users', async (req, res) => {
