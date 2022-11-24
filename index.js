@@ -53,6 +53,20 @@ const Users = client.db('timeWatch').collection('users')
 const Products = client.db('timeWatch').collection('products')
 const Categories = client.db('timeWatch').collection('categories')
 
+async function verifyAdmin(req, res, next) {
+    const requester = req.decoded?.email;
+    const requesterInfo = await Users.findOne({ email: requester })
+    const requesterRole = requesterInfo?.role
+    console.log(`requesterRole `, requesterRole)
+    if (!requesterInfo?.role === 'admin') {
+        return res.status(401).send({
+            message: `You are not admin`,
+            status: 401
+        })
+    }
+    next();
+}
+
 // JWT Token Get
 app.get('/api/v1/time-watch/jwt', async (req, res) => {
     const email = req.query.email
@@ -63,6 +77,61 @@ app.get('/api/v1/time-watch/jwt', async (req, res) => {
     }
     res.status(403).send({ accessToken: '' })
 })
+
+// Check Admin
+app.get('/api/v1/time-watch/users/admin/:email', async (req, res) => {
+    try {
+        const userEmail = req.params.email
+        const user = await Users.findOne({ email: userEmail })
+        res.send({
+            success: true,
+            message: 'Successfully get the all Users',
+            isAdmin: user?.role === 'admin'
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
+// Check Buyer
+app.get('/api/v1/time-watch/users/buyer/:email', async (req, res) => {
+    try {
+        const userEmail = req.params.email
+        const user = await Users.findOne({ email: userEmail })
+        res.send({
+            success: true,
+            message: 'Successfully get the all Users',
+            isBuyer: user?.role === 'buyer'
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
+// Check Seller
+app.get('/api/v1/time-watch/users/seller/:email', async (req, res) => {
+    try {
+        const userEmail = req.params.email
+        const user = await Users.findOne({ email: userEmail })
+        res.send({
+            success: true,
+            message: 'Successfully get the all Users',
+            isSeller: user?.role === 'seller'
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
 
 // User Create Api Endpoint
 app.post('/api/v1/time-watch/users', async (req, res) => {
