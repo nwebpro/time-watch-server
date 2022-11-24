@@ -56,14 +56,31 @@ app.post('/api/v1/time-watch/users', async (req, res) => {
 })
 
 // Add Product Api Endpoint
-app.post('/api/v1/time-watch/add-product', async (req, res) => {
+app.post('/api/v1/time-watch/products', async (req, res) => {
     try {
         const addProduct = req.body
         const addProducts = await Products.insertOne(addProduct)
         res.send({
             success: true,
-            message: 'Successfully create a new product',
+            message: 'Successfully add a new product',
             data: addProducts
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
+// All Product get api 
+app.get('/api/v1/time-watch/products', async (req, res) => {
+    try {
+        const products = await Products.find({}).toArray()
+        res.send({
+            success: true,
+            message: 'Successfully add a new product',
+            data: products
         })
     } catch (error) {
         res.send({
