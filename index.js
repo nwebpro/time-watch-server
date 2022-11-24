@@ -96,24 +96,6 @@ app.get('/api/v1/time-watch/users/admin/:email', async (req, res) => {
     }
 })
 
-// Check Buyer
-app.get('/api/v1/time-watch/users/buyer/:email', async (req, res) => {
-    try {
-        const userEmail = req.params.email
-        const user = await Users.findOne({ email: userEmail })
-        res.send({
-            success: true,
-            message: 'Successfully get the all Users',
-            isBuyer: user?.role === 'buyer'
-        })
-    } catch (error) {
-        res.send({
-            success: false,
-            error: error.message
-        })
-    }
-})
-
 // Check Seller
 app.get('/api/v1/time-watch/users/seller/:email', async (req, res) => {
     try {
@@ -152,6 +134,10 @@ app.post('/api/v1/time-watch/users', async (req, res) => {
             error: error.message
         })
     }
+})
+
+app.put('/api/v1/time-watch/users/status-update', async (req, res) => {
+
 })
 
 // Add Product Api Endpoint
@@ -225,30 +211,13 @@ app.get('/api/v1/time-watch/category', async (req, res) => {
 })
 
 // Category Delete
-app.delete('/api/v1/time-watch/category/:categoryId', async (req, res) => {
-    try {
-        const categoryId = req.params.categoryId
-        const categories = await Categories.deleteOne({ _id: ObjectId(categoryId) })
-        res.send({
-            success: true,
-            message: 'Category deleted successfully',
-            data: categories
-        })
-    } catch (error) {
-        res.send({
-            success: false,
-            error: error.message
-        })
-    }
-})
-
-// app.get('/api/v1/time-watch/category/:categoryId', async (req, res) => {
+// app.delete('/api/v1/time-watch/category/:categoryId', async (req, res) => {
 //     try {
 //         const categoryId = req.params.categoryId
-//         const categories = await Products.find({ categoryName: categoryId })
+//         const categories = await Categories.deleteOne({ _id: ObjectId(categoryId) })
 //         res.send({
 //             success: true,
-//             message: 'Category loaded successfully',
+//             message: 'Category deleted successfully',
 //             data: categories
 //         })
 //     } catch (error) {
@@ -260,7 +229,39 @@ app.delete('/api/v1/time-watch/category/:categoryId', async (req, res) => {
 // })
 
 
+// All Buyers Loaded
+app.get('/api/v1/time-watch/buyers', async (req, res) => {
+    try {
+        const buyers = await Users.find({ role: 'buyer' }).toArray()
+        res.send({
+            success: true,
+            message: 'Successfully all buyers loaded!',
+            data: buyers
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
 
+// All Sellers Loaded
+app.get('/api/v1/time-watch/sellers', async (req, res) => {
+    try {
+        const sellers = await Users.find({ role: 'seller' }).toArray()
+        res.send({
+            success: true,
+            message: 'Successfully all sellers loaded!',
+            data: sellers
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
 
 
 
