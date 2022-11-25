@@ -3,6 +3,7 @@ const app = express()
 const cors = require('cors')
 require('dotenv').config()
 const jwt = require('jsonwebtoken');
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 
 // Server running port
@@ -11,7 +12,6 @@ const port = process.env.PORT || 5000
 // Middleware
 app.use(express.json())
 app.use(cors())
-
 
 
 // All Api Endpoint
@@ -37,7 +37,6 @@ function verifyJWT(req, res, next) {
     })
 }
 
-
 // Database Connect function
 async function dbConnect() {
     try {
@@ -53,6 +52,7 @@ const Users = client.db('timeWatch').collection('users')
 const Products = client.db('timeWatch').collection('products')
 const Categories = client.db('timeWatch').collection('categories')
 const Orders = client.db('timeWatch').collection('orders')
+const Payments = client.db('timeWatch').collection('payments')
 
 async function verifyAdmin(req, res, next) {
     const requester = req.decoded?.email;
@@ -320,6 +320,26 @@ app.delete('/api/v1/time-watch/product/orders/:orderId', async (req, res) => {
     }
 })
 
+// Single Order data Loaded
+app.get('/api/v1/time-watch/product/orders/:orderId', async (req, res) => {
+    try {
+        const orderId = req.params.orderId
+        const singleOrder = await Orders.findOne({ _id: ObjectId(orderId) })
+        res.send({
+            success: true,
+            message: 'Successfully Get the single booking data',
+            data: singleOrder
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
+
+
 
 // All Buyers Loaded
 app.get('/api/v1/time-watch/buyers', async (req, res) => {
@@ -356,7 +376,57 @@ app.get('/api/v1/time-watch/sellers', async (req, res) => {
 })
 
 
+// Stripe payment Implement
+app.post('/api/v1/time-watch/create-payment-intent', async (req, res) => {
+    try {
+        const order = req.body
+        const price = parseFloat(order.price)
+        const amount = price * 100
+        const paymentIntent = await stripe.paymentIntents.create({
+            currency: 'usd',
+            amount: amount,
+            "payment_method_types": [
+                "card"
+            ]
+        })
+        res.send({
+            success: true,
+            message: 'Successfully stripe payment created',
+            clientSecret: paymentIntent.client_secret
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
 
+app.post('/api/v1/time-watch/payments', async (req, res) => {
+    try {
+        const paymentData = req.body
+        const payments = await Payments.insertOne(paymentData)
+        const id = paymentData.orderId
+        const filter = { _id: ObjectId(id) }
+        const updatedDoc = {
+            $set: {
+                paid: true,
+                transactionId: paymentData.transactionId
+            }
+        }
+        const updatePayments = await Orders.updateOne(filter, updatedDoc)
+        res.send({
+            success: true,
+            message: 'Successfully Add a Payment',
+            data: payments
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
 
 
 
