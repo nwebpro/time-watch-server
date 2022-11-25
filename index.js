@@ -52,7 +52,7 @@ async function dbConnect() {
 const Users = client.db('timeWatch').collection('users')
 const Products = client.db('timeWatch').collection('products')
 const Categories = client.db('timeWatch').collection('categories')
-const ProductBookings = client.db('timeWatch').collection('productBookings')
+const Orders = client.db('timeWatch').collection('orders')
 
 async function verifyAdmin(req, res, next) {
     const requester = req.decoded?.email;
@@ -114,7 +114,6 @@ app.get('/api/v1/time-watch/users/seller/:email', async (req, res) => {
         })
     }
 })
-
 
 // User Create Api Endpoint
 app.post('/api/v1/time-watch/users', async (req, res) => {
@@ -270,15 +269,15 @@ app.get('/api/v1/time-watch/category', async (req, res) => {
 //     }
 // })
 
-// Product Booking Api
-app.post('/api/v1/time-watch/product/bookings', async (req, res) => {
+// Product Order Api
+app.post('/api/v1/time-watch/product/orders', async (req, res) => {
     try {
-        const bookingData = req.body
-        const productBookings = await ProductBookings.insertOne(bookingData)
+        const ordersData = req.body
+        const orders = await Orders.insertOne(ordersData)
         res.send({
             success: true,
             message: 'Successfully Booked!',
-            data: productBookings
+            data: orders
         })
     } catch (error) {
         res.send({
@@ -287,7 +286,39 @@ app.post('/api/v1/time-watch/product/bookings', async (req, res) => {
         })
     }
 })
-
+// get api 
+app.get('/api/v1/time-watch/product/orders', async (req, res) => {
+    try {
+        const orders = await Orders.find({}).toArray()
+        res.send({
+            success: true,
+            message: 'Successfully get all ordered product',
+            data: orders
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+// order Delete
+app.delete('/api/v1/time-watch/product/orders/:orderId', async (req, res) => {
+    try {
+        const orderId = req.params.orderId
+        const orders = await Orders.deleteOne({ _id: ObjectId(orderId) })
+        res.send({
+            success: true,
+            message: 'Order deleted successfully',
+            data: orders
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
 
 
 // All Buyers Loaded
