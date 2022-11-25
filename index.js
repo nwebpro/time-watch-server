@@ -3,7 +3,7 @@ const app = express()
 const cors = require('cors')
 require('dotenv').config()
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion } = require('mongodb')
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 
 // Server running port
 const port = process.env.PORT || 5000
@@ -52,6 +52,7 @@ async function dbConnect() {
 const Users = client.db('timeWatch').collection('users')
 const Products = client.db('timeWatch').collection('products')
 const Categories = client.db('timeWatch').collection('categories')
+const ProductBookings = client.db('timeWatch').collection('productBookings')
 
 async function verifyAdmin(req, res, next) {
     const requester = req.decoded?.email;
@@ -136,14 +137,38 @@ app.post('/api/v1/time-watch/users', async (req, res) => {
     }
 })
 
-app.put('/api/v1/time-watch/users/status-update', async (req, res) => {
-
+// User verified status update
+app.put('/api/v1/time-watch/users/status-update/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId
+        const userFilter = { _id: ObjectId(userId) }
+        const option = { upsert: true }
+        const updateDoc = {
+            $set: {
+                status: 'Verified'
+            }
+        }
+        const users = await Users.updateOne(userFilter, updateDoc, option)
+        res.send({
+            success: true,
+            message: 'Successfully change the user role',
+            data: users
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
 })
 
 // Add Product Api Endpoint
 app.post('/api/v1/time-watch/products', async (req, res) => {
     try {
         const addProduct = req.body
+        const categoryFilter = await Categories.findOne({_id: ObjectId(addProduct.categoryId)})
+        const filteredCatName = categoryFilter.name
+        addProduct.categoryName = filteredCatName
         const addProducts = await Products.insertOne(addProduct)
         res.send({
             success: true,
@@ -175,6 +200,23 @@ app.get('/api/v1/time-watch/products', async (req, res) => {
     }
 })
 
+// All Product get api 
+app.get('/api/v1/time-watch/products/:categoryId', async (req, res) => {
+    try {
+        const catId = req.params.categoryId
+        const products = await Products.find({ categoryId: catId }).toArray()
+        res.send({
+            success: true,
+            message: 'Successfully add a new product',
+            data: products
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
 
 // Add Category Api
 app.post('/api/v1/time-watch/category', async (req, res) => {
@@ -227,6 +269,25 @@ app.get('/api/v1/time-watch/category', async (req, res) => {
 //         })
 //     }
 // })
+
+// Product Booking Api
+app.post('/api/v1/time-watch/product/bookings', async (req, res) => {
+    try {
+        const bookingData = req.body
+        const productBookings = await ProductBookings.insertOne(bookingData)
+        res.send({
+            success: true,
+            message: 'Successfully Booked!',
+            data: productBookings
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
 
 
 // All Buyers Loaded
