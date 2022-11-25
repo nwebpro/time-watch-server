@@ -252,22 +252,22 @@ app.get('/api/v1/time-watch/category', async (req, res) => {
 })
 
 // Category Delete
-// app.delete('/api/v1/time-watch/category/:categoryId', async (req, res) => {
-//     try {
-//         const categoryId = req.params.categoryId
-//         const categories = await Categories.deleteOne({ _id: ObjectId(categoryId) })
-//         res.send({
-//             success: true,
-//             message: 'Category deleted successfully',
-//             data: categories
-//         })
-//     } catch (error) {
-//         res.send({
-//             success: false,
-//             error: error.message
-//         })
-//     }
-// })
+app.delete('/api/v1/time-watch/category/:categoryId', async (req, res) => {
+    try {
+        const categoryId = req.params.categoryId
+        const categories = await Categories.deleteOne({ _id: ObjectId(categoryId) })
+        res.send({
+            success: true,
+            message: 'Category deleted successfully',
+            data: categories
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
 
 // Product Order Api
 app.post('/api/v1/time-watch/product/orders', async (req, res) => {
