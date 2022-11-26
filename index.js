@@ -96,7 +96,6 @@ app.get('/api/v1/time-watch/users/admin/:email', async (req, res) => {
         })
     }
 })
-
 // Check Seller
 app.get('/api/v1/time-watch/users/seller/:email', async (req, res) => {
     try {
@@ -114,6 +113,8 @@ app.get('/api/v1/time-watch/users/seller/:email', async (req, res) => {
         })
     }
 })
+
+
 
 // User Create Api Endpoint
 app.post('/api/v1/time-watch/users', async (req, res) => {
@@ -135,7 +136,6 @@ app.post('/api/v1/time-watch/users', async (req, res) => {
         })
     }
 })
-
 // User verified status update
 app.put('/api/v1/time-watch/users/status-update/:userId', async (req, res) => {
     try {
@@ -161,6 +161,9 @@ app.put('/api/v1/time-watch/users/status-update/:userId', async (req, res) => {
     }
 })
 
+
+
+
 // Add Product Api Endpoint
 app.post('/api/v1/time-watch/products', async (req, res) => {
     try {
@@ -181,11 +184,27 @@ app.post('/api/v1/time-watch/products', async (req, res) => {
         })
     }
 })
-
-// All Product get api 
+// All Product get api with email
 app.get('/api/v1/time-watch/products', async (req, res) => {
     try {
-        const products = await Products.find({}).toArray()
+        const email = req.query.email
+        const products = await Products.find({ userEmail: email }, {}).toArray()
+        res.send({
+            success: true,
+            message: 'Successfully add a new product',
+            data: products
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+// All product show in ui 
+app.get('/api/v1/time-watch/all-products', async (req, res) => {
+    try {
+        const products = await Products.find().toArray()
         res.send({
             success: true,
             message: 'Successfully add a new product',
@@ -216,6 +235,24 @@ app.get('/api/v1/time-watch/products/:categoryId', async (req, res) => {
         })
     }
 })
+// Product Delete Api
+app.delete('/api/v1/time-watch/products/:productId', async (req, res) => {
+    try {
+        const productId = req.params.productId
+        const products = await Products.deleteOne({ _id: ObjectId(productId) })
+        res.send({
+            success: true,
+            message: 'Product deleted successfully',
+            data: products
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
 
 // Add Category Api
 app.post('/api/v1/time-watch/category', async (req, res) => {
@@ -250,7 +287,6 @@ app.get('/api/v1/time-watch/category', async (req, res) => {
         })
     }
 })
-
 // Category Delete
 app.delete('/api/v1/time-watch/category/:categoryId', async (req, res) => {
     try {
@@ -269,8 +305,10 @@ app.delete('/api/v1/time-watch/category/:categoryId', async (req, res) => {
     }
 })
 
-// Product Order Api
-app.post('/api/v1/time-watch/product/orders', async (req, res) => {
+
+
+// Order Api
+app.post('/api/v1/time-watch/orders', async (req, res) => {
     try {
         const ordersData = req.body
         const orders = await Orders.insertOne(ordersData)
@@ -287,7 +325,7 @@ app.post('/api/v1/time-watch/product/orders', async (req, res) => {
     }
 })
 // get api 
-app.get('/api/v1/time-watch/product/orders', async (req, res) => {
+app.get('/api/v1/time-watch/orders', async (req, res) => {
     try {
         const orders = await Orders.find({}).toArray()
         res.send({
@@ -303,7 +341,7 @@ app.get('/api/v1/time-watch/product/orders', async (req, res) => {
     }
 })
 // order Delete
-app.delete('/api/v1/time-watch/product/orders/:orderId', async (req, res) => {
+app.delete('/api/v1/time-watch/orders/:orderId', async (req, res) => {
     try {
         const orderId = req.params.orderId
         const orders = await Orders.deleteOne({ _id: ObjectId(orderId) })
@@ -319,9 +357,8 @@ app.delete('/api/v1/time-watch/product/orders/:orderId', async (req, res) => {
         })
     }
 })
-
 // Single Order data Loaded
-app.get('/api/v1/time-watch/product/orders/:orderId', async (req, res) => {
+app.get('/api/v1/time-watch/orders/:orderId', async (req, res) => {
     try {
         const orderId = req.params.orderId
         const singleOrder = await Orders.findOne({ _id: ObjectId(orderId) })
@@ -380,7 +417,7 @@ app.get('/api/v1/time-watch/sellers', async (req, res) => {
 app.post('/api/v1/time-watch/create-payment-intent', async (req, res) => {
     try {
         const order = req.body
-        const price = parseFloat(order.price)
+        const price = order.price
         const amount = price * 100
         const paymentIntent = await stripe.paymentIntents.create({
             currency: 'usd',
@@ -401,20 +438,29 @@ app.post('/api/v1/time-watch/create-payment-intent', async (req, res) => {
         })
     }
 })
-
+// Save payments data in database
 app.post('/api/v1/time-watch/payments', async (req, res) => {
     try {
         const paymentData = req.body
         const payments = await Payments.insertOne(paymentData)
         const id = paymentData.orderId
-        const filter = { _id: ObjectId(id) }
-        const updatedDoc = {
+        const productId = paymentData.productId
+
+        const filterOrder = { _id: ObjectId(id) }
+        const filterProduct = { _id: ObjectId(productId) }
+        const orderUpdatedDoc = {
             $set: {
                 paid: true,
                 transactionId: paymentData.transactionId
             }
         }
-        const updatePayments = await Orders.updateOne(filter, updatedDoc)
+        const productUpdatedDoc = {
+            $set: {
+                status: 'sold'
+            }
+        }
+        const updatePayments = await Orders.updateOne(filterOrder, orderUpdatedDoc)
+        const updateProductsStatus = await Products.updateOne(filterProduct, productUpdatedDoc)
         res.send({
             success: true,
             message: 'Successfully Add a Payment',
