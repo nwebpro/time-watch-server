@@ -53,6 +53,7 @@ const Products = client.db('timeWatch').collection('products')
 const Categories = client.db('timeWatch').collection('categories')
 const Orders = client.db('timeWatch').collection('orders')
 const Payments = client.db('timeWatch').collection('payments')
+const ReportProducts = client.db('timeWatch').collection('reportProducts')
 
 async function verifyAdmin(req, res, next) {
     const requester = req.decoded?.email;
@@ -115,7 +116,6 @@ app.get('/api/v1/time-watch/users/seller/:email', async (req, res) => {
 })
 
 
-
 // User Create Api Endpoint
 app.post('/api/v1/time-watch/users', async (req, res) => {
     try {
@@ -160,8 +160,6 @@ app.put('/api/v1/time-watch/users/status-update/:userId', async (req, res) => {
         })
     }
 })
-
-
 
 
 // Add Product Api Endpoint
@@ -253,6 +251,68 @@ app.delete('/api/v1/time-watch/products/:productId', async (req, res) => {
     }
 })
 
+// Reported Product Api
+app.post('/api/v1/time-watch/reports', async (req, res) => {
+    try {
+        const reportsProduct = req.body
+        const reportsProducts = await ReportProducts.insertOne(reportsProduct)
+        
+        const productId = reportsProduct.productId
+        const filterProduct = { _id: ObjectId(productId) }
+        const productUpdatedDoc = {
+            $set: {
+                reported: true
+            }
+        }
+        const updateReportedStatus = await Products.updateOne(filterProduct, productUpdatedDoc)
+        res.send({
+            success: true,
+            message: `Successfully report this product!`,
+            data: reportsProducts
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+// Reported product get
+app.get('/api/v1/time-watch/reports', async (req, res) => {
+    try {
+        const reportedProducts = await ReportProducts.find({}).toArray()
+        res.send({
+            success: true,
+            message: 'Successfully all reported product loaded!',
+            data: reportedProducts
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+// Reported product deleted
+app.delete('/api/v1/time-watch/reports/:reportId', async (req, res) => {
+    try {
+        const reportId = req.params.reportId
+        const filterProduct = await Products.findOne({ _id: productId })
+        const filterReportedProduct = await ReportProducts.findOne({ productId: productId })
+        const reportedProduct = await ReportProducts.deleteMany(filterProduct, filterReportedProduct)
+        res.send({
+            success: true,
+            message: 'Reported Product deleted successfully',
+            data: reportedProduct
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
 
 // Add Category Api
 app.post('/api/v1/time-watch/category', async (req, res) => {
@@ -327,7 +387,8 @@ app.post('/api/v1/time-watch/orders', async (req, res) => {
 // get api 
 app.get('/api/v1/time-watch/orders', async (req, res) => {
     try {
-        const orders = await Orders.find({}).toArray()
+        const email = req.query.email
+        const orders = await Orders.find({ email: email }).toArray()
         res.send({
             success: true,
             message: 'Successfully get all ordered product',
