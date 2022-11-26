@@ -297,13 +297,17 @@ app.get('/api/v1/time-watch/reports', async (req, res) => {
 app.delete('/api/v1/time-watch/reports/:reportId', async (req, res) => {
     try {
         const reportId = req.params.reportId
-        const filterProduct = await Products.findOne({ _id: productId })
-        const filterReportedProduct = await ReportProducts.findOne({ productId: productId })
-        const reportedProduct = await ReportProducts.deleteMany(filterProduct, filterReportedProduct)
+        const reportedProduct = await ReportProducts.findOne({ _id: ObjectId(reportId) })
+
+        const productId = reportedProduct.productId
+        const findProduct = await Products.findOne({ _id: ObjectId(productId) })
+
+        const reportedProductDelete = await ReportProducts.deleteOne(reportedProduct)
+        const productDelete = await Products.deleteOne(findProduct)
         res.send({
             success: true,
             message: 'Reported Product deleted successfully',
-            data: reportedProduct
+            data: reportedProductDelete
         })
     } catch (error) {
         res.send({
