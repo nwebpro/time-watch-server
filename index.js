@@ -6,27 +6,34 @@ const jwt = require('jsonwebtoken');
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 
-// Server running port
+/* =========================
+* Server Running Port
+ =========================*/
 const port = process.env.PORT || 5000
 
-// Middleware
+/* =========================
+* Middleware
+ =========================*/
 app.use(express.json())
 app.use(cors())
 
 
-// All Api Endpoint
-
+/* =========================
+* MongoDB URL and MongoClient
+ =========================*/
 const uri = `mongodb+srv://${ process.env.BD_USER }:${ process.env.DB_PASS }@cluster0.1ipuukw.mongodb.net/?retryWrites=true&w=majority`
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 })
 
-// Verify JWT Token
+/* =========================
+* Verify JWT Token after User Login Middleware
+ =========================*/
 function verifyJWT(req, res, next) {
     const authHeader = req.headers.authorization
     if(!authHeader) {
         return res.status(401).send('Unauthorized Access!')
     }
     const token = authHeader.split(' ')[1]
-    jwt.verify(token, process.env.JWT_ACCESS_TOKEN, function(err, decoded){
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded){
         if(err) {
             return res.status(403).send({
                 message: 'Forbidden Access!'
@@ -37,7 +44,9 @@ function verifyJWT(req, res, next) {
     })
 }
 
-// Database Connect function
+/* =========================
+* MongoDb Database Connection
+ =========================*/
 async function dbConnect() {
     try {
         await client.connect()
@@ -47,7 +56,9 @@ async function dbConnect() {
     }
 }dbConnect().catch(error => console.log(error.message))
 
-// Database Collection
+/* =========================
+* All Database Collection
+ =========================*/
 const Users = client.db('timeWatch').collection('users')
 const Products = client.db('timeWatch').collection('products')
 const Categories = client.db('timeWatch').collection('categories')
@@ -55,11 +66,14 @@ const Orders = client.db('timeWatch').collection('orders')
 const Payments = client.db('timeWatch').collection('payments')
 const ReportProducts = client.db('timeWatch').collection('reportProducts')
 
+/* =========================
+* Verify Admin, Seller and Buyer Middleware
+ =========================*/
 async function verifyAdmin(req, res, next) {
     const requester = req.decoded?.email;
     const requesterInfo = await Users.findOne({ email: requester })
     const requesterRole = requesterInfo?.role
-    console.log(`requesterRole `, requesterRole)
+    // console.log(`requesterRole `, requesterRole)
     if (!requesterInfo?.role === 'admin') {
         return res.status(401).send({
             message: `You are not admin`,
@@ -68,8 +82,36 @@ async function verifyAdmin(req, res, next) {
     }
     next();
 }
+async function verifySeller(req, res, next) {
+    const requester = req.decoded?.email;
+    const requesterInfo = await Users.findOne({ email: requester })
+    const requesterRole = requesterInfo?.role
+    // console.log(`requesterRole `, requesterRole)
+    if (!requesterInfo?.role === 'seller') {
+        return res.status(401).send({
+            message: `You are not seller`,
+            status: 401
+        })
+    }
+    next();
+}
+async function verifyBuyer(req, res, next) {
+    const requester = req.decoded?.email;
+    const requesterInfo = await Users.findOne({ email: requester })
+    const requesterRole = requesterInfo?.role
+    // console.log(`requesterRole `, requesterRole)
+    if (!requesterInfo?.role === 'buyer') {
+        return res.status(401).send({
+            message: `You are not Buyer`,
+            status: 401
+        })
+    }
+    next();
+}
 
-// JWT Token Get
+/* =========================
+* JWT Token Api Endpoint
+ =========================*/
 app.get('/api/v1/time-watch/jwt', async (req, res) => {
     const email = req.query.email
     const user = await Users.findOne({ email: email })
@@ -80,9 +122,9 @@ app.get('/api/v1/time-watch/jwt', async (req, res) => {
     res.status(403).send({ accessToken: '' })
 })
 
-
-
-
+/* =========================
+* Check Admin and Seller Api Endpoint
+ =========================*/
 // Check Admin
 app.get('/api/v1/time-watch/users/admin/:email', async (req, res) => {
     try {
@@ -90,7 +132,7 @@ app.get('/api/v1/time-watch/users/admin/:email', async (req, res) => {
         const user = await Users.findOne({ email: userEmail })
         res.send({
             success: true,
-            message: 'Successfully get the all Users',
+            message: 'Successfully get the Admin',
             isAdmin: user?.role === 'admin'
         })
     } catch (error) {
@@ -107,7 +149,7 @@ app.get('/api/v1/time-watch/users/seller/:email', async (req, res) => {
         const user = await Users.findOne({ email: userEmail })
         res.send({
             success: true,
-            message: 'Successfully get the all Users',
+            message: 'Successfully get the Seller',
             isSeller: user?.role === 'seller'
         })
     } catch (error) {
@@ -117,8 +159,27 @@ app.get('/api/v1/time-watch/users/seller/:email', async (req, res) => {
         })
     }
 })
+// Check Buyer
+app.get('/api/v1/time-watch/users/buyer/:email', async (req, res) => {
+    try {
+        const userEmail = req.params.email
+        const user = await Users.findOne({ email: userEmail })
+        res.send({
+            success: true,
+            message: 'Successfully get the Buyer',
+            isBuyer: user?.role === 'buyer'
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
 
-
+/* =========================
+* User Create and Verify Status Update Api Endpoint
+ =========================*/
 // User Create Api Endpoint
 app.post('/api/v1/time-watch/users', async (req, res) => {
     try {
@@ -140,7 +201,7 @@ app.post('/api/v1/time-watch/users', async (req, res) => {
     }
 })
 // User verified status update
-app.put('/api/v1/time-watch/users/status-update/:email', async (req, res) => {
+app.put('/api/v1/time-watch/users/status-update/:email', verifyJWT, verifyAdmin, async (req, res) => {
     try {
         const email = req.params.email
         const userFilter = { userEmail: email }
@@ -169,9 +230,11 @@ app.put('/api/v1/time-watch/users/status-update/:email', async (req, res) => {
     }
 })
 
-
-// Add Product Api Endpoint
-app.post('/api/v1/time-watch/products', async (req, res) => {
+/* =========================
+* All Product Api Endpoint
+ =========================*/
+// Post
+app.post('/api/v1/time-watch/products', verifyJWT, verifySeller, async (req, res) => {
     try {
         const addProduct = req.body
     
@@ -202,8 +265,8 @@ app.post('/api/v1/time-watch/products', async (req, res) => {
         })
     }
 })
-// All Product get api with email
-app.get('/api/v1/time-watch/products', async (req, res) => {
+// All Product get api with email in 
+app.get('/api/v1/time-watch/products', verifyJWT, verifyBuyer, async (req, res) => {
     try {
         const email = req.query.email
         const products = await Products.find({ userEmail: email }, {}).toArray()
@@ -219,8 +282,8 @@ app.get('/api/v1/time-watch/products', async (req, res) => {
         })
     }
 })
-// All product show in ui 
-app.get('/api/v1/time-watch/all-products', async (req, res) => {
+// All product show in Product Page
+app.get('/api/v1/time-watch/all-products', verifyJWT, verifyBuyer, async (req, res) => {
     try {
         const products = await Products.find({}).toArray()
         const soldProduct = products.filter(product => product.status === 'sold')
@@ -237,12 +300,8 @@ app.get('/api/v1/time-watch/all-products', async (req, res) => {
         })
     }
 })
-
-
-
-
 // All Product get api 
-app.get('/api/v1/time-watch/products/:categoryId', async (req, res) => {
+app.get('/api/v1/time-watch/products/:categoryId', verifyJWT, verifyBuyer, async (req, res) => {
     try {
         const catId = req.params.categoryId
         const products = await Products.find({ categoryId: catId }).toArray()
@@ -261,7 +320,7 @@ app.get('/api/v1/time-watch/products/:categoryId', async (req, res) => {
     }
 })
 // Product Delete Api
-app.delete('/api/v1/time-watch/products/:productId', async (req, res) => {
+app.delete('/api/v1/time-watch/products/:productId', verifyJWT, verifySeller, async (req, res) => {
     try {
         const productId = req.params.productId
         const products = await Products.deleteOne({ _id: ObjectId(productId) })
@@ -278,11 +337,11 @@ app.delete('/api/v1/time-watch/products/:productId', async (req, res) => {
     }
 })
 
-
-
-
+/* =========================
+* All Reported Product Api Endpoint
+ =========================*/
 // Reported Product Api
-app.post('/api/v1/time-watch/reports', async (req, res) => {
+app.post('/api/v1/time-watch/reports', verifyJWT, verifyBuyer, async (req, res) => {
     try {
         const reportsProduct = req.body
         const reportsProducts = await ReportProducts.insertOne(reportsProduct)
@@ -308,7 +367,7 @@ app.post('/api/v1/time-watch/reports', async (req, res) => {
     }
 })
 // Reported product get
-app.get('/api/v1/time-watch/reports', async (req, res) => {
+app.get('/api/v1/time-watch/reports', verifyJWT, verifyAdmin, async (req, res) => {
     try {
         const reportedProducts = await ReportProducts.find({}).toArray()
         res.send({
@@ -324,7 +383,7 @@ app.get('/api/v1/time-watch/reports', async (req, res) => {
     }
 })
 // Reported product deleted
-app.delete('/api/v1/time-watch/reports/:reportId', async (req, res) => {
+app.delete('/api/v1/time-watch/reports/:reportId', verifyJWT, verifyAdmin, async (req, res) => {
     try {
         const reportId = req.params.reportId
         const reportedProduct = await ReportProducts.findOne({ _id: ObjectId(reportId) })
@@ -347,9 +406,11 @@ app.delete('/api/v1/time-watch/reports/:reportId', async (req, res) => {
     }
 })
 
-
+/* =========================
+* All Category Api Endpoint
+ =========================*/
 // Add Category Api
-app.post('/api/v1/time-watch/category', async (req, res) => {
+app.post('/api/v1/time-watch/category', verifyJWT, verifySeller, async (req, res) => {
     try {
         const categoryData = req.body
         const categories = await Categories.insertOne(categoryData)
@@ -366,7 +427,7 @@ app.post('/api/v1/time-watch/category', async (req, res) => {
     }
 })
 // All Product Category get api 
-app.get('/api/v1/time-watch/category', async (req, res) => {
+app.get('/api/v1/time-watch/category',  async (req, res) => {
     try {
         const categories = await Categories.find({}).toArray()
         res.send({
@@ -382,7 +443,7 @@ app.get('/api/v1/time-watch/category', async (req, res) => {
     }
 })
 // Category Delete
-app.delete('/api/v1/time-watch/category/:categoryId', async (req, res) => {
+app.delete('/api/v1/time-watch/category/:categoryId', verifyJWT, verifySeller, async (req, res) => {
     try {
         const categoryId = req.params.categoryId
         const categories = await Categories.deleteOne({ _id: ObjectId(categoryId) })
@@ -399,10 +460,11 @@ app.delete('/api/v1/time-watch/category/:categoryId', async (req, res) => {
     }
 })
 
-
-
+/* =========================
+* All Order Api Endpoint
+ =========================*/
 // Order Api
-app.post('/api/v1/time-watch/orders', async (req, res) => {
+app.post('/api/v1/time-watch/orders', verifyJWT, verifyBuyer, async (req, res) => {
     try {
         const ordersData = req.body
         const orders = await Orders.insertOne(ordersData)
@@ -419,7 +481,7 @@ app.post('/api/v1/time-watch/orders', async (req, res) => {
     }
 })
 // get api 
-app.get('/api/v1/time-watch/orders', async (req, res) => {
+app.get('/api/v1/time-watch/orders', verifyJWT, verifyBuyer, async (req, res) => {
     try {
         const email = req.query.email
         const orders = await Orders.find({ email: email }).toArray()
@@ -436,7 +498,7 @@ app.get('/api/v1/time-watch/orders', async (req, res) => {
     }
 })
 // order Delete
-app.delete('/api/v1/time-watch/orders/:orderId', async (req, res) => {
+app.delete('/api/v1/time-watch/orders/:orderId', verifyJWT, verifyBuyer, async (req, res) => {
     try {
         const orderId = req.params.orderId
         const orders = await Orders.deleteOne({ _id: ObjectId(orderId) })
@@ -453,7 +515,7 @@ app.delete('/api/v1/time-watch/orders/:orderId', async (req, res) => {
     }
 })
 // Single Order data Loaded
-app.get('/api/v1/time-watch/orders/:orderId', async (req, res) => {
+app.get('/api/v1/time-watch/orders/:orderId', verifyJWT, verifyBuyer, async (req, res) => {
     try {
         const orderId = req.params.orderId
         const singleOrder = await Orders.findOne({ _id: ObjectId(orderId) })
@@ -470,11 +532,11 @@ app.get('/api/v1/time-watch/orders/:orderId', async (req, res) => {
     }
 })
 
-
-
-
+/* =========================
+* Buyer and Seller in Admin Dashboard Api Endpoint
+ =========================*/
 // All Buyers Loaded
-app.get('/api/v1/time-watch/buyers', async (req, res) => {
+app.get('/api/v1/time-watch/buyers', verifyJWT, verifyAdmin, async (req, res) => {
     try {
         const buyers = await Users.find({ role: 'buyer' }).toArray()
         res.send({
@@ -489,9 +551,25 @@ app.get('/api/v1/time-watch/buyers', async (req, res) => {
         })
     }
 })
-
+// Buyer Delete
+app.delete('/api/v1/time-watch/buyers/:buyerId', verifyJWT, async (req, res) => {
+    try {
+        const buyerId = req.params.buyerId
+        const users = await Users.deleteOne({ _id: ObjectId(buyerId) })
+        res.send({
+            success: true,
+            message: 'User deleted successfully',
+            data: users
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
 // All Sellers Loaded
-app.get('/api/v1/time-watch/sellers', async (req, res) => {
+app.get('/api/v1/time-watch/sellers', verifyJWT, verifyAdmin, async (req, res) => {
     try {
         const sellers = await Users.find({ role: 'seller' }).toArray()
         res.send({
@@ -506,10 +584,29 @@ app.get('/api/v1/time-watch/sellers', async (req, res) => {
         })
     }
 })
+// Seller Delete
+app.delete('/api/v1/time-watch/sellers/:sellerId', verifyJWT, verifyBuyer, async (req, res) => {
+    try {
+        const sellerId = req.params.sellerId
+        const users = await Users.deleteOne({ _id: ObjectId(sellerId) })
+        res.send({
+            success: true,
+            message: 'User deleted successfully',
+            data: users
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
 
-
+/* =========================
+* Stripe Payment Api Endpoint
+ =========================*/
 // Stripe payment Implement
-app.post('/api/v1/time-watch/create-payment-intent', async (req, res) => {
+app.post('/api/v1/time-watch/create-payment-intent', verifyJWT, verifyBuyer, async (req, res) => {
     try {
         const order = req.body
         const price = order.price
@@ -534,7 +631,7 @@ app.post('/api/v1/time-watch/create-payment-intent', async (req, res) => {
     }
 })
 // Save payments data in database
-app.post('/api/v1/time-watch/payments', async (req, res) => {
+app.post('/api/v1/time-watch/payments', verifyJWT, verifyBuyer, async (req, res) => {
     try {
         const paymentData = req.body
         const payments = await Payments.insertOne(paymentData)
@@ -569,9 +666,10 @@ app.post('/api/v1/time-watch/payments', async (req, res) => {
     }
 })
 
-
-// Make Advertisement
-app.put('/api/v1/time-watch/makeAdvertise/:productId', async(req, res)=>{
+/* =========================
+* All Advertisement Api Endpoint
+ =========================*/
+app.put('/api/v1/time-watch/makeAdvertise/:productId', verifyJWT, verifyBuyer, async(req, res)=>{
     try {
         const productId = req.params.productId;
         const filter = {
@@ -596,7 +694,6 @@ app.put('/api/v1/time-watch/makeAdvertise/:productId', async(req, res)=>{
         })
     }
 })
-
 // Make Advertisement get 
 app.get('/api/v1/time-watch/makeAdvertise', async(req,res)=>{
     try {
@@ -618,11 +715,9 @@ app.get('/api/v1/time-watch/makeAdvertise', async(req,res)=>{
 
 
 
-
-
-
-
-
+/* =========================
+* Root and 404 Api Endpoint
+ =========================*/
 // Root api import and endpoint
 app.get('/api/v1/time-watch', (req, res) => {
     res.send({
@@ -632,7 +727,6 @@ app.get('/api/v1/time-watch', (req, res) => {
         author: `Ab Naeem`,
     })
 })
-
 // Time Watch 404 not found api endpoint
 app.all('*', (req, res) => {
     res.send({
@@ -641,7 +735,9 @@ app.all('*', (req, res) => {
     })
 })
 
-// Time Watch listening port
+/* =========================
+* Time Watch listening port
+ =========================*/
 app.listen(port, () => {
     console.log(`Time Watch listening on port ${port}!`)
 })
