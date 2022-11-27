@@ -222,11 +222,13 @@ app.get('/api/v1/time-watch/products', async (req, res) => {
 // All product show in ui 
 app.get('/api/v1/time-watch/all-products', async (req, res) => {
     try {
-        const products = await Products.find().toArray()
+        const products = await Products.find({}).toArray()
+        const soldProduct = products.filter(product => product.status === 'sold')
+        const filterProduct = products.filter(product => !soldProduct.includes(product))
         res.send({
             success: true,
             message: 'Successfully add a new product',
-            data: products
+            data: filterProduct
         })
     } catch (error) {
         res.send({
@@ -244,10 +246,12 @@ app.get('/api/v1/time-watch/products/:categoryId', async (req, res) => {
     try {
         const catId = req.params.categoryId
         const products = await Products.find({ categoryId: catId }).toArray()
+        const soldProduct = products.filter(product => product.status === 'sold')
+        const filterProduct = products.filter(product => !soldProduct.includes(product))
         res.send({
             success: true,
             message: 'Successfully add a new product',
-            data: products
+            data: filterProduct
         })
     } catch (error) {
         res.send({
@@ -597,10 +601,12 @@ app.put('/api/v1/time-watch/makeAdvertise/:productId', async(req, res)=>{
 app.get('/api/v1/time-watch/makeAdvertise', async(req,res)=>{
     try {
         const products = await Products.find({ isAdvertise: true }).toArray()
+        const soldProduct = products.filter(product => product.status === 'sold')
+        const filterProduct = products.filter(product => !soldProduct.includes(product))
         res.send({
             success: true,
             message: 'Advertisement get data successfully',
-            data: products
+            data: filterProduct
         })
     } catch (error) {
         res.send({
@@ -609,13 +615,6 @@ app.get('/api/v1/time-watch/makeAdvertise', async(req,res)=>{
         })
     }
 })
-
-
-
-
-
-
-
 
 
 
