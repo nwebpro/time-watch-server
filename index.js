@@ -80,6 +80,9 @@ app.get('/api/v1/time-watch/jwt', async (req, res) => {
     res.status(403).send({ accessToken: '' })
 })
 
+
+
+
 // Check Admin
 app.get('/api/v1/time-watch/users/admin/:email', async (req, res) => {
     try {
@@ -137,17 +140,22 @@ app.post('/api/v1/time-watch/users', async (req, res) => {
     }
 })
 // User verified status update
-app.put('/api/v1/time-watch/users/status-update/:userId', async (req, res) => {
+app.put('/api/v1/time-watch/users/status-update/:email', async (req, res) => {
     try {
-        const userId = req.params.userId
-        const userFilter = { _id: ObjectId(userId) }
+        const email = req.params.email
+        const userFilter = { userEmail: email }
+        const userFilter2 = { email: email }
         const option = { upsert: true }
         const updateDoc = {
             $set: {
-                status: 'Verified'
+                verify: true
             }
         }
-        const users = await Users.updateOne(userFilter, updateDoc, option)
+        const productHae = await Products.find(userFilter).toArray()
+        if(productHae.length){
+            const setVerify = await Products.updateMany(userFilter, updateDoc, option)
+        }
+        const users = await Users.updateOne(userFilter2, updateDoc, option)
         res.send({
             success: true,
             message: 'Successfully change the user role',
@@ -166,9 +174,21 @@ app.put('/api/v1/time-watch/users/status-update/:userId', async (req, res) => {
 app.post('/api/v1/time-watch/products', async (req, res) => {
     try {
         const addProduct = req.body
+    
         const categoryFilter = await Categories.findOne({_id: ObjectId(addProduct.categoryId)})
         const filteredCatName = categoryFilter.name
         addProduct.categoryName = filteredCatName
+
+        const userQuery = {
+            email: addProduct.userEmail
+        }
+        console.log(userQuery)
+        const user = await Users.findOne(userQuery)
+        const verify = user.verify
+
+        if(verify === true) {
+            addProduct.verify = true
+        }
         const addProducts = await Products.insertOne(addProduct)
         res.send({
             success: true,
@@ -216,6 +236,9 @@ app.get('/api/v1/time-watch/all-products', async (req, res) => {
     }
 })
 
+
+
+
 // All Product get api 
 app.get('/api/v1/time-watch/products/:categoryId', async (req, res) => {
     try {
@@ -250,6 +273,9 @@ app.delete('/api/v1/time-watch/products/:productId', async (req, res) => {
         })
     }
 })
+
+
+
 
 // Reported Product Api
 app.post('/api/v1/time-watch/reports', async (req, res) => {
@@ -538,6 +564,53 @@ app.post('/api/v1/time-watch/payments', async (req, res) => {
         })
     }
 })
+
+
+// Make Advertisement
+app.put('/api/v1/time-watch/makeAdvertise/:productId', async(req, res)=>{
+    try {
+        const productId = req.params.productId;
+        const filter = {
+            _id: ObjectId(productId)
+        }
+        const options = {upsert: true};
+        const updateDoc = {
+            $set: {
+                isAdvertise: true
+            }
+        };
+        const products = await Products.updateOne(filter,updateDoc,options)
+        res.send({
+            success: true,
+            message: 'Advertisement Done successfully',
+            data: products
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
+// Make Advertisement get 
+app.get('/api/v1/time-watch/makeAdvertise', async(req,res)=>{
+    try {
+        const products = await Products.find({ isAdvertise: true }).toArray()
+        res.send({
+            success: true,
+            message: 'Advertisement get data successfully',
+            data: products
+        })
+    } catch (error) {
+        res.send({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
+
 
 
 
