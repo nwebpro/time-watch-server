@@ -7,7 +7,7 @@
 
 ## [Live Demo](https://time-watch-nwebpro.vercel.app/api/v1/time-watch).
 
-## [Time Watch Client Side](https://github.com/programming-hero-web-course-4/b612-used-products-resale-clients-side-nwebpro).
+## [Time Watch Client Side](https://github.com/nwebpro/time-watch-client).
 
 
 # About the Project
